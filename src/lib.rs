@@ -1,7 +1,6 @@
 extern crate bigint;
 extern crate libc;
-
-use std::mem::transmute;
+extern crate byteorder;
 
 pub mod ffi;
 pub mod types;
@@ -9,24 +8,35 @@ pub mod utils;
 
 use libc::c_void;
 use bigint::uint::U256;
+use byteorder::{BigEndian, ByteOrder};
+
 use ffi::{randomx_flags, randomx_calculate_hash, randomx_vm};
 
 pub use types::RxState;
 
 pub fn calculate(vm: *mut randomx_vm, input: &mut [u8], nonce: u64) -> U256 {
 	let mut result: [u8; 32] = [0; 32];
-	let nonce_bytes: [u8; 8] = unsafe { transmute(nonce.to_be()) };
-	let length = input.len();
+	let input_size = input.len();
 
-	for i in 0..8 {
-		input[length - (8-i)] = nonce_bytes[i];
+	let mut nonce_bytes = [0; 8];
+	BigEndian::write_u64(&mut nonce_bytes, nonce);
+
+	// first example
+	for i in 0..nonce_bytes.len(){
+		input[input_size - (nonce_bytes.len()-i)] = nonce_bytes[i];
 	}
+
+	// after test it
+	// let mut s_input: Vec<u8> = input.into_iter()
+	//	.take(input_size - 8)
+	//	.chain(&mut nonce_bytes)
+	//	.collect::<Vec<u8>>();
 
 	unsafe {
 		randomx_calculate_hash(
 			vm,
 			input.as_ptr() as *const c_void,
-			length,
+			input_size,
 			result.as_mut_ptr() as *mut c_void);
 	}
 
@@ -34,13 +44,13 @@ pub fn calculate(vm: *mut randomx_vm, input: &mut [u8], nonce: u64) -> U256 {
 } 
 
 pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
-	let flags: randomx_flags = ffi::randomx_flags_RANDOMX_FLAG_DEFAULT;
+	let vm = unsafe {
+		let cache = state.init_cache(seed, false).expect("seed no initialized");
+		state.create_vm().expect("vm no initialized")
+	};
 
 	let hash_target = unsafe {
 		let mut hash: [u8; 32] = [0; 32];
-
-		let cache = state.init_cache(seed, true).expect("seed no initialized");
-		let vm = state.create_vm().expect("vm no initialized");
 
 		ffi::randomx_calculate_hash(
 			vm,
@@ -50,8 +60,6 @@ pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 		);
 
 		ffi::randomx_destroy_vm(vm);
-
-		state.destroy();
 
 		hash.into()
 	};

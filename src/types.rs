@@ -115,20 +115,21 @@ impl RxState {
 		}
 
 		let mut threads = Vec::new();
+		let mut start = 0;
+		let count = randomx_dataset_item_count();
+		let perth = count / threads_count as u64;
+		let remainder = count % threads_count as u64;
 
 		for i in 0..threads_count {
 			let cache = Wrapper(NonNull::new(cache).unwrap());
 			let dataset = Wrapper(NonNull::new(dataset).unwrap());
-
-			let count = randomx_dataset_item_count();
-			let perth = count / 4;
-			let start = perth * i as u64;
-
+			let count = perth + if i == (threads_count - 1) { remainder } else {0};
 			threads.push(thread::spawn(move || {
 				let d = dataset.0.as_ptr();
 				let c = cache.0.as_ptr();
-				randomx_init_dataset(d, c, start, perth);
+				randomx_init_dataset(d, c, start, count);
 			}));
+			start += count;
 		}
 
 		for th in threads {
