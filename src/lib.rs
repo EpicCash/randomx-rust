@@ -70,6 +70,7 @@ pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::utils::*;
 
 	#[test]
 	fn test_verify() {
