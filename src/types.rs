@@ -98,34 +98,31 @@ impl RxState {
 	}
 
 	pub fn init_cache(&mut self, seed: &[u8], reinit: bool) -> Result<(), &str> {
-		if let Some(ref c) = self.cache {
+		if let Some(_) = self.cache {
 			if !reinit {
-				unsafe {
-					randomx_release_cache(c.cache);
-				}
+				self.cache = None;
 			} else {
 				return Ok(());
 			}
 		}
 
 		let flags = self.get_flags();
-		let mut cache =
+		let mut cache_ptr =
 			unsafe { randomx_alloc_cache(flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
 
-		if cache.is_null() {
-			cache = unsafe { randomx_alloc_cache(flags) };
+		if cache_ptr.is_null() {
+			cache_ptr = unsafe { randomx_alloc_cache(flags) };
+		}
 
-			if cache.is_null() {
-				return Err("cache no allocated");
-			}
+		if cache_ptr.is_null() {
+			return Err("cache not allocated");
 		}
 
 		unsafe {
-			randomx_init_cache(cache, seed.as_ptr() as *const c_void, seed.len());
+			randomx_init_cache(cache_ptr, seed.as_ptr() as *const c_void, seed.len());
 		}
 
-		//forget(cache);
-		self.cache = Some(RxCache { cache });
+		self.cache = Some(RxCache { cache: cache_ptr });
 
 		Ok(())
 	}
@@ -135,21 +132,17 @@ impl RxState {
 			return Ok(());
 		}
 
-		let cache = match self.cache {
-			Some(ref c) => c,
-			None => {
-				return Err("cache is not initialized");
-			}
-		};
+		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
-		let mut dataset = unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
+		let mut dataset_ptr =
+			unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
 
-		if dataset.is_null() {
-			dataset = unsafe { randomx_alloc_dataset(self.get_flags()) };
+		if dataset_ptr.is_null() {
+			dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
 		}
 
-		if dataset.is_null() {
-			return Err("is not possible initialize a dataset");
+		if dataset_ptr.is_null() {
+			return Err("it's not possible initialize a dataset");
 		}
 
 		let mut threads = Vec::new();
@@ -160,7 +153,7 @@ impl RxState {
 
 		for i in 0..threads_count {
 			let cache = Wrapper(NonNull::new(cache.cache).unwrap());
-			let dataset = Wrapper(NonNull::new(dataset).unwrap());
+			let dataset = Wrapper(NonNull::new(dataset_ptr).unwrap());
 			let count = perth
 				+ if i == (threads_count - 1) {
 					remainder
@@ -181,23 +174,21 @@ impl RxState {
 			th.join().map_err(|_| "failed to join threads")?;
 		}
 
-		self.dataset = Some(RxDataset { dataset });
+		self.dataset = Some(RxDataset {
+			dataset: dataset_ptr,
+		});
 
 		Ok(())
 	}
 
 	pub fn create_vm(&mut self) -> Result<RxVM, &str> {
-		let cache = match self.cache {
-			Some(ref c) => c,
-			None => {
-				return Err("cache is not initialized");
-			}
-		};
+		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
-		let dataset = match self.dataset {
-			Some(ref d) => d.dataset,
-			None => null_mut(),
-		};
+		let dataset = self
+			.dataset
+			.as_ref()
+			.map(|d| d.dataset)
+			.unwrap_or(null_mut());
 
 		let flags = self.get_flags()
 			| if !dataset.is_null() {
@@ -227,7 +218,7 @@ impl RxState {
 		if !vm.is_null() {
 			Ok(RxVM { vm })
 		} else {
-			Err("unable")
+			Err("unable to create RxVM")
 		}
 	}
 }
