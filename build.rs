@@ -37,7 +37,7 @@ fn compile_cmake() {
 	cmake::Config::new("randomx").build_target("").build();
 }
 
-fn exec_if_newer(inpath: &str, outpath: &str, build: &Fn()) {
+fn exec_if_newer<F: Fn()>(inpath: &str, outpath: &str, build: F) {
 	if let Ok(metadata) = fs::metadata(outpath) {
 		let outtime = FileTime::from_last_modification_time(&metadata);
 		let intime = FileTime::from_last_modification_time(
@@ -60,9 +60,9 @@ fn main() {
 
 	fail_on_empty_directory("randomx");
 
-	exec_if_newer("randomx", &format!("{}/build", out_dir), &compile_cmake);
+	exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
 
-	exec_if_newer("randomx", &format!("{}/ffi.rs", out_dir), &|| {
+	exec_if_newer("randomx", &format!("{}/ffi.rs", out_dir), || {
 		generate_bindings(&out_dir);
 	});
 
