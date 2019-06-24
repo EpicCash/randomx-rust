@@ -73,16 +73,16 @@ mod test {
 
 	#[test]
 	fn test_verify() {
-		let hash = [
-			3445087034, 2648376634, 1922307026, 2053423067, 1138766641, 1228060755, 3862626153,
-			4108850211,
-		];
-		let hash_u256: U256 = from_u32_to_U256(&hash);
+		let hash: U256 = [
+			58, 219, 87, 205, 58, 5, 219, 157, 210,
+			19, 148, 114, 219, 191, 100, 122, 49, 51,
+			224, 67, 83, 184, 50, 73, 105, 255, 58, 230,
+			35, 20, 232, 244].into();
 		let block_template: [u8; 128] = [0; 128];
 		let seed: [u8; 32] = [0; 32];
 
 		let mut rx_state = RxState::new();
 
-		assert_eq!(hash_u256, slow_hash(&mut rx_state, &block_template, &seed));
+		assert_eq!(hash, slow_hash(&mut rx_state, &block_template, &seed));
 	}
 }
