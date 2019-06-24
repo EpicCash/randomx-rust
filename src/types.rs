@@ -1,39 +1,39 @@
 extern crate libc;
 
 use std::ptr::null_mut;
-use std::thread;
 use std::ptr::NonNull;
+use std::thread;
 
-use libc::c_void;
 use ffi::*;
+use libc::c_void;
 
 struct Wrapper<T>(NonNull<T>);
-unsafe impl<T> std::marker::Send for Wrapper<T> { }
+unsafe impl<T> std::marker::Send for Wrapper<T> {}
 
 #[derive(Debug)]
 pub struct RxCache {
-    cache: *mut randomx_cache,
+	cache: *mut randomx_cache,
 }
 
 impl Drop for RxCache {
-    fn drop(&mut self) {
-        unsafe {
-            randomx_release_cache(self.cache);
-        }
-    }
+	fn drop(&mut self) {
+		unsafe {
+			randomx_release_cache(self.cache);
+		}
+	}
 }
 
 #[derive(Debug)]
 pub struct RxDataset {
-    dataset: *mut randomx_dataset,
+	dataset: *mut randomx_dataset,
 }
 
 impl Drop for RxDataset {
-    fn drop(&mut self) {
-        unsafe {
-            randomx_release_dataset(self.dataset);
-        }
-    }
+	fn drop(&mut self) {
+		unsafe {
+			randomx_release_dataset(self.dataset);
+		}
+	}
 }
 
 #[derive(Debug)]
@@ -48,19 +48,19 @@ pub struct RxState {
 }
 
 pub struct RxVM {
-    pub vm: *mut randomx_vm,
+	pub vm: *mut randomx_vm,
 }
 
 impl Drop for RxVM {
-    fn drop(&mut self) {
-        unsafe {
-            randomx_destroy_vm(self.vm);
-        }
-    }
+	fn drop(&mut self) {
+		unsafe {
+			randomx_destroy_vm(self.vm);
+		}
+	}
 }
 
-unsafe impl Sync for RxState{}
-unsafe impl Send for RxState{}
+unsafe impl Sync for RxState {}
+unsafe impl Send for RxState {}
 
 impl RxState {
 	pub fn new() -> Self {
@@ -100,16 +100,17 @@ impl RxState {
 	pub fn init_cache(&mut self, seed: &[u8], reinit: bool) -> Result<(), &str> {
 		if let Some(ref c) = self.cache {
 			if !reinit {
-                unsafe {
-				    randomx_release_cache(c.cache);
-                }
+				unsafe {
+					randomx_release_cache(c.cache);
+				}
 			} else {
 				return Ok(());
 			}
 		}
 
 		let flags = self.get_flags();
-		let mut cache = unsafe {randomx_alloc_cache(flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
+		let mut cache =
+			unsafe { randomx_alloc_cache(flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
 
 		if cache.is_null() {
 			cache = unsafe { randomx_alloc_cache(flags) };
@@ -119,9 +120,9 @@ impl RxState {
 			}
 		}
 
-        unsafe {
-		    randomx_init_cache(cache, seed.as_ptr() as *const c_void, seed.len());
-        }
+		unsafe {
+			randomx_init_cache(cache, seed.as_ptr() as *const c_void, seed.len());
+		}
 
 		//forget(cache);
 		self.cache = Some(RxCache { cache });
@@ -141,9 +142,7 @@ impl RxState {
 			}
 		};
 
-		let mut dataset = unsafe {
-            randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES)
-        };
+		let mut dataset = unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
 
 		if dataset.is_null() {
 			dataset = unsafe { randomx_alloc_dataset(self.get_flags()) };
@@ -162,13 +161,18 @@ impl RxState {
 		for i in 0..threads_count {
 			let cache = Wrapper(NonNull::new(cache.cache).unwrap());
 			let dataset = Wrapper(NonNull::new(dataset).unwrap());
-			let count = perth + if i == (threads_count - 1) { remainder } else {0};
+			let count = perth
+				+ if i == (threads_count - 1) {
+					remainder
+				} else {
+					0
+				};
 			threads.push(thread::spawn(move || {
 				let d = dataset.0.as_ptr();
 				let c = cache.0.as_ptr();
-                unsafe {
-				    randomx_init_dataset(d, c, start, count);
-                }
+				unsafe {
+					randomx_init_dataset(d, c, start, count);
+				}
 			}));
 			start += count;
 		}
@@ -192,7 +196,7 @@ impl RxState {
 
 		let dataset = match self.dataset {
 			Some(ref d) => d.dataset,
-			None => {null_mut()}
+			None => null_mut(),
 		};
 
 		let flags = self.get_flags()
@@ -203,16 +207,21 @@ impl RxState {
 			};
 
 		let mut vm = unsafe {
-            randomx_create_vm(
-			flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES, cache.cache, dataset)
-        };
+			randomx_create_vm(
+				flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES,
+				cache.cache,
+				dataset,
+			)
+		};
 
 		if vm.is_null() {
 			vm = unsafe { randomx_create_vm(flags, cache.cache, dataset) };
 		}
 
 		if vm.is_null() {
-			vm = unsafe {randomx_create_vm(randomx_flags_RANDOMX_FLAG_DEFAULT, cache.cache, dataset) };
+			vm = unsafe {
+				randomx_create_vm(randomx_flags_RANDOMX_FLAG_DEFAULT, cache.cache, dataset)
+			};
 		}
 
 		if !vm.is_null() {
