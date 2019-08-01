@@ -44,9 +44,15 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	result.into()
 }
 
+pub fn set_verification_mode(state: &mut RxState, seed: &[u8; 32]) {
+	state.jit_compiler = true;
+	state.init_cache(seed, false).unwrap();
+	//state.init_dataset(1).unwrap();
+}
+
 pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 	let vm = {
-		state.init_cache(seed, false).expect("seed not initialized");
+		set_verification_mode(state, seed);
 		state.create_vm().expect("vm not initialized")
 	};
 
