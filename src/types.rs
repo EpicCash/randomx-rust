@@ -10,7 +10,7 @@ use libc::c_void;
 struct Wrapper<T>(NonNull<T>);
 unsafe impl<T> std::marker::Send for Wrapper<T> {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RxCache {
 	cache: *mut randomx_cache,
 }
@@ -23,7 +23,7 @@ impl Drop for RxCache {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RxDataset {
 	dataset: *mut randomx_dataset,
 }
@@ -36,9 +36,9 @@ impl Drop for RxDataset {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RxState {
-	pub seed: u64,
+	pub seed: [u8; 32],
 	pub hard_aes: bool,
 	pub full_mem: bool,
 	pub large_pages: bool,
@@ -65,7 +65,7 @@ unsafe impl Send for RxState {}
 impl RxState {
 	pub fn new() -> Self {
 		RxState {
-			seed: 0,
+			seed: [0; 32],
 			hard_aes: false,
 			full_mem: false,
 			large_pages: false,
@@ -99,7 +99,7 @@ impl RxState {
 
 	pub fn init_cache(&mut self, seed: &[u8], reinit: bool) -> Result<(), &str> {
 		if let Some(_) = self.cache {
-			if !reinit {
+			if reinit {
 				self.cache = None;
 			} else {
 				return Ok(());
