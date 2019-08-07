@@ -12,7 +12,7 @@ use libc::c_void;
 
 use ffi::randomx_calculate_hash;
 
-pub use types::{RxState, RxVM};
+pub use types::{RxState, RxAction, RxVM};
 
 pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	let mut result: [u8; 32] = [0; 32];

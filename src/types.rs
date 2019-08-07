@@ -10,6 +10,11 @@ use libc::c_void;
 struct Wrapper<T>(NonNull<T>);
 unsafe impl<T> std::marker::Send for Wrapper<T> {}
 
+pub enum RxAction {
+	Changed,
+	NotChanged
+}
+
 #[derive(Debug, Clone)]
 pub struct RxCache {
 	cache: *mut randomx_cache,
@@ -100,10 +105,10 @@ impl RxState {
 		flags
 	}
 
-	pub fn init_cache(&mut self, seed: &[u8]) -> Result<bool, &str> {
+	pub fn init_cache(&mut self, seed: &[u8]) -> Result<RxAction, &str> {
 		if let Some(_) = self.cache  {
 			if self.is_same_seed(seed) {
-				return Ok(false)
+				return Ok(RxAction::NotChanged)
 			}
 		}
 
@@ -130,7 +135,7 @@ impl RxState {
 		self.cache = Some(RxCache { cache: cache_ptr });
 		self.seed.copy_from_slice(seed);
 
-		Ok(true)
+		Ok(RxAction::Changed)
 	}
 
 	pub fn is_same_seed(&self, seed: &[u8]) -> bool {
