@@ -12,7 +12,7 @@ use libc::c_void;
 
 use ffi::randomx_calculate_hash;
 
-pub use types::{RxState, RxVM};
+pub use types::{RxState, RxAction, RxVM};
 
 pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	let mut result: [u8; 32] = [0; 32];
@@ -21,16 +21,9 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	let mut nonce_bytes = [0; 8];
 	BigEndian::write_u64(&mut nonce_bytes, nonce);
 
-	// first example
 	for i in 0..nonce_bytes.len() {
 		input[input_size - (nonce_bytes.len() - i)] = nonce_bytes[i];
 	}
-
-	// after test it
-	// let mut s_input: Vec<u8> = input.into_iter()
-	//	.take(input_size - 8)
-	//	.chain(&mut nonce_bytes)
-	//	.collect::<Vec<u8>>();
 
 	unsafe {
 		randomx_calculate_hash(
@@ -44,16 +37,12 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	result.into()
 }
 
-pub fn set_verification_mode(state: &mut RxState, seed: &[u8; 32]) {
-	state.jit_compiler = true;
-	state.init_cache(seed, false).unwrap();
-	//state.init_dataset(1).unwrap();
-}
 
 pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 	let vm = {
-		set_verification_mode(state, seed);
-		state.create_vm().expect("vm not initialized")
+		state.jit_compiler = true;
+		state.init_cache(seed).unwrap();
+		state.get_or_create_vm().expect("vm not initialized")
 	};
 
 	let hash_target = unsafe {
