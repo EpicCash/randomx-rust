@@ -45,8 +45,10 @@ pub struct RxState {
 	pub jit_compiler: bool,
 	cache: Option<RxCache>,
 	dataset: Option<RxDataset>,
+	vms: Vec<Box<RxVM>>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct RxVM {
 	pub vm: *mut randomx_vm,
 }
@@ -72,6 +74,7 @@ impl RxState {
 			jit_compiler: false,
 			cache: None,
 			dataset: None,
+			vms: vec![],
 		}
 	}
 
@@ -97,12 +100,10 @@ impl RxState {
 		flags
 	}
 
-	pub fn init_cache(&mut self, seed: &[u8], reinit: bool) -> Result<(), &str> {
-		if let Some(_) = self.cache {
-			if reinit {
-				self.cache = None;
-			} else {
-				return Ok(());
+	pub fn init_cache(&mut self, seed: &[u8]) -> Result<bool, &str> {
+		if let Some(_) = self.cache  {
+			if self.is_same_seed(seed) {
+				return Ok(false)
 			}
 		}
 
@@ -122,16 +123,21 @@ impl RxState {
 			randomx_init_cache(cache_ptr, seed.as_ptr() as *const c_void, seed.len());
 		}
 
-		self.cache = Some(RxCache { cache: cache_ptr });
+		for vm in &self.vms {
+			unsafe { randomx_vm_set_cache(vm.vm, cache_ptr) };
+		}
 
-		Ok(())
+		self.cache = Some(RxCache { cache: cache_ptr });
+		self.seed.copy_from_slice(seed);
+
+		Ok(true)
+	}
+
+	pub fn is_same_seed(&self, seed: &[u8]) -> bool {
+		&self.seed == seed
 	}
 
 	pub fn init_dataset(&mut self, threads_count: u8) -> Result<(), &str> {
-		if let Some(_) = self.dataset {
-			return Ok(());
-		}
-
 		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
 		let mut dataset_ptr =
@@ -174,6 +180,12 @@ impl RxState {
 			th.join().map_err(|_| "failed to join threads")?;
 		}
 
+		for vm in &self.vms {
+			unsafe {
+				randomx_vm_set_dataset(vm.vm, dataset_ptr)
+			};
+		}
+
 		self.dataset = Some(RxDataset {
 			dataset: dataset_ptr,
 		});
@@ -181,7 +193,7 @@ impl RxState {
 		Ok(())
 	}
 
-	pub fn create_vm(&mut self) -> Result<RxVM, &str> {
+	pub fn create_vm(&mut self) -> Result<&Box<RxVM>, &str> {
 		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
 		let dataset = self
@@ -216,9 +228,18 @@ impl RxState {
 		}
 
 		if !vm.is_null() {
-			Ok(RxVM { vm })
+			self.vms.push(Box::new(RxVM { vm }));
+			Ok(self.vms.last().unwrap())
 		} else {
 			Err("unable to create RxVM")
+		}
+	}
+
+	pub fn get_or_create_vm(&mut self) -> Result<&Box<RxVM>, &str> {
+		if self.vms.len() == 0 {
+			self.create_vm()
+		} else {
+			Ok(self.vms.last().unwrap())
 		}
 	}
 }
