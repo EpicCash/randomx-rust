@@ -16,6 +16,28 @@ pub enum RxAction {
 }
 
 #[derive(Debug, Clone)]
+pub struct Trash {
+	cache: Option<RxCache>,
+	dataset: Option<RxDataset>,
+}
+
+impl Trash {
+	pub fn empty(&mut self) {
+		self.cache = None;
+		self.dataset = None;
+	}
+}
+
+impl Default for Trash {
+	fn default() -> Self {
+		Trash {
+			cache: None,
+			dataset: None,
+		}
+	}
+}
+
+#[derive(Debug, Clone)]
 pub struct RxCache {
 	cache: *mut randomx_cache,
 }
@@ -51,6 +73,7 @@ pub struct RxState {
 	cache: Option<RxCache>,
 	dataset: Option<RxDataset>,
 	vms: Vec<Box<RxVM>>,
+	trash: Trash,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -80,6 +103,15 @@ impl RxState {
 			cache: None,
 			dataset: None,
 			vms: vec![],
+			trash: Trash::default(),
+		}
+	}
+
+	pub fn is_initialized(&self) -> bool {
+		if let Some(_) = self.cache {
+			true
+		} else {
+			false
 		}
 	}
 
@@ -128,10 +160,7 @@ impl RxState {
 			randomx_init_cache(cache_ptr, seed.as_ptr() as *const c_void, seed.len());
 		}
 
-		for vm in &self.vms {
-			unsafe { randomx_vm_set_cache(vm.vm, cache_ptr) };
-		}
-
+		self.trash.cache = self.cache.take();
 		self.cache = Some(RxCache { cache: cache_ptr });
 		self.seed.copy_from_slice(seed);
 
@@ -145,12 +174,13 @@ impl RxState {
 	pub fn init_dataset(&mut self, threads_count: u8) -> Result<(), &str> {
 		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
-		let mut dataset_ptr =
-			unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
+		//let mut dataset_ptr =
+		//	unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
+		let mut dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
 
-		if dataset_ptr.is_null() {
+		/*if dataset_ptr.is_null() {
 			dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
-		}
+		}*/
 
 		if dataset_ptr.is_null() {
 			return Err("it's not possible initialize a dataset");
@@ -185,12 +215,7 @@ impl RxState {
 			th.join().map_err(|_| "failed to join threads")?;
 		}
 
-		for vm in &self.vms {
-			unsafe {
-				randomx_vm_set_dataset(vm.vm, dataset_ptr)
-			};
-		}
-
+		self.trash.dataset = self.dataset.take();
 		self.dataset = Some(RxDataset {
 			dataset: dataset_ptr,
 		});
@@ -246,5 +271,19 @@ impl RxState {
 		} else {
 			Ok(self.vms.last().unwrap())
 		}
+	}
+
+	pub fn update_vms(&mut self) {
+		let c = self.cache.as_ref().map_or(null_mut(), |x| x.cache);
+		let d = self.dataset.as_ref().map_or(null_mut(), |x| x.dataset);
+
+		for vm in &self.vms {
+			unsafe {
+				randomx_vm_set_cache(vm.vm, c);
+				randomx_vm_set_dataset(vm.vm, d);
+			}
+		}
+
+		self.trash.empty();
 	}
 }

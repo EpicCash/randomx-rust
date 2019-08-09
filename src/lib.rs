@@ -37,11 +37,12 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	result.into()
 }
 
-
 pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 	let vm = {
 		state.jit_compiler = true;
-		state.init_cache(seed).unwrap();
+		if let RxAction::Changed = state.init_cache(seed).unwrap() {
+			state.update_vms();
+		}
 		state.get_or_create_vm().expect("vm not initialized")
 	};
 
