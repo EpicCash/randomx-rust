@@ -2,6 +2,7 @@ extern crate libc;
 
 use std::ptr::null_mut;
 use std::ptr::NonNull;
+use std::sync::Arc;
 use std::thread;
 
 use ffi::*;
@@ -12,7 +13,7 @@ unsafe impl<T> std::marker::Send for Wrapper<T> {}
 
 pub enum RxAction {
 	Changed,
-	NotChanged
+	NotChanged,
 }
 
 #[derive(Debug, Clone)]
@@ -72,7 +73,7 @@ pub struct RxState {
 	pub jit_compiler: bool,
 	cache: Option<RxCache>,
 	dataset: Option<RxDataset>,
-	vms: Vec<Box<RxVM>>,
+	vms: Vec<Arc<RxVM>>,
 	trash: Trash,
 }
 
@@ -138,9 +139,9 @@ impl RxState {
 	}
 
 	pub fn init_cache(&mut self, seed: &[u8]) -> Result<RxAction, &str> {
-		if let Some(_) = self.cache  {
+		if let Some(_) = self.cache {
 			if self.is_same_seed(seed) {
-				return Ok(RxAction::NotChanged)
+				return Ok(RxAction::NotChanged);
 			}
 		}
 
@@ -187,10 +188,10 @@ impl RxState {
 		}
 
 		let mut threads = Vec::new();
-		let mut start = 0;
-		let count = unsafe { randomx_dataset_item_count() };
-		let perth = count / threads_count as u64;
-		let remainder = count % threads_count as u64;
+		let mut start: u64 = 0;
+		let count: u64 = unsafe { randomx_dataset_item_count() } as u64;
+		let perth: u64 = count / threads_count as u64;
+		let remainder: u64 = count % threads_count as u64;
 
 		for i in 0..threads_count {
 			let cache = Wrapper(NonNull::new(cache.cache).unwrap());
@@ -205,7 +206,7 @@ impl RxState {
 				let d = dataset.0.as_ptr();
 				let c = cache.0.as_ptr();
 				unsafe {
-					randomx_init_dataset(d, c, start, count);
+					randomx_init_dataset(d, c, start.into(), count.into());
 				}
 			}));
 			start += count;
@@ -223,7 +224,7 @@ impl RxState {
 		Ok(())
 	}
 
-	pub fn create_vm(&mut self) -> Result<&Box<RxVM>, &str> {
+	pub fn create_vm(&mut self) -> Result<Arc<RxVM>, &str> {
 		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
 		let dataset = self
@@ -258,29 +259,29 @@ impl RxState {
 		}
 
 		if !vm.is_null() {
-			self.vms.push(Box::new(RxVM { vm }));
-			Ok(self.vms.last().unwrap())
+			self.vms.push(Arc::new(RxVM { vm }));
+			Ok(self.vms.last().unwrap().clone())
 		} else {
 			Err("unable to create RxVM")
 		}
 	}
 
-	pub fn get_or_create_vm(&mut self) -> Result<&Box<RxVM>, &str> {
+	pub fn get_or_create_vm(&mut self) -> Result<Arc<RxVM>, &str> {
 		if self.vms.len() == 0 {
 			self.create_vm()
 		} else {
-			Ok(self.vms.last().unwrap())
+			Ok(self.vms.last().unwrap().clone())
 		}
 	}
 
 	pub fn update_vms(&mut self) {
-		let c = self.cache.as_ref().map_or(null_mut(), |x| x.cache);
-		let d = self.dataset.as_ref().map_or(null_mut(), |x| x.dataset);
+		let cache = self.cache.as_ref().map_or(null_mut(), |x| x.cache);
+		let dataset = self.dataset.as_ref().map_or(null_mut(), |x| x.dataset);
 
 		for vm in &self.vms {
 			unsafe {
-				randomx_vm_set_cache(vm.vm, c);
-				randomx_vm_set_dataset(vm.vm, d);
+				randomx_vm_set_cache(vm.vm, cache);
+				randomx_vm_set_dataset(vm.vm, dataset);
 			}
 		}
 

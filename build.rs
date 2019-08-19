@@ -60,7 +60,8 @@ fn main() {
 
 	fail_on_empty_directory("randomx");
 
-	exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
+	compile_cmake();
+	//exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
 
 	exec_if_newer("randomx", &format!("{}/ffi.rs", out_dir), || {
 		generate_bindings(&out_dir);
