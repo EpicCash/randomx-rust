@@ -16,7 +16,7 @@ pub enum RxAction {
 	NotChanged,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Trash {
 	cache: Option<RxCache>,
 	dataset: Option<RxDataset>,
@@ -38,7 +38,7 @@ impl Default for Trash {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RxCache {
 	cache: *mut randomx_cache,
 }
@@ -51,7 +51,7 @@ impl Drop for RxCache {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RxDataset {
 	dataset: *mut randomx_dataset,
 }
@@ -64,7 +64,7 @@ impl Drop for RxDataset {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RxState {
 	pub seed: [u8; 32],
 	pub hard_aes: bool,
@@ -77,7 +77,7 @@ pub struct RxState {
 	trash: Trash,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct RxVM {
 	pub vm: *mut randomx_vm,
 }
