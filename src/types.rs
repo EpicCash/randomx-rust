@@ -109,11 +109,7 @@ impl RxState {
 	}
 
 	pub fn is_initialized(&self) -> bool {
-		if let Some(_) = self.cache {
-			true
-		} else {
-			false
-		}
+		self.cache.is_some()
 	}
 
 	pub fn get_flags(&self) -> randomx_flags {
@@ -139,10 +135,8 @@ impl RxState {
 	}
 
 	pub fn init_cache(&mut self, seed: &[u8]) -> Result<RxAction, &str> {
-		if let Some(_) = self.cache {
-			if self.is_same_seed(seed) {
-				return Ok(RxAction::NotChanged);
-			}
+		if self.cache.is_some() && self.is_same_seed(seed) {
+			return Ok(RxAction::NotChanged);
 		}
 
 		let flags = self.get_flags();
