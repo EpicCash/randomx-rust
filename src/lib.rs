@@ -12,7 +12,7 @@ use libc::c_void;
 
 use ffi::randomx_calculate_hash;
 
-pub use types::{RxState, RxAction, RxVM};
+pub use types::{RxAction, RxState, RxVM};
 
 pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 	let mut result: [u8; 32] = [0; 32];
@@ -81,5 +81,50 @@ mod test {
 		let mut rx_state = RxState::new();
 
 		assert_eq!(hash, slow_hash(&mut rx_state, &block_template, &seed));
+	}
+
+	#[test]
+	fn test_swap_dataset() {
+		let hashs = vec![
+			U256::from_dec_str(
+				"26621690709847676946322902081806750977287422934645095895756323911047673342196",
+			)
+			.unwrap(),
+			U256::from_dec_str(
+				"99798341874875334058428891982218724161246716553034279961270815837069075885600",
+			)
+			.unwrap(),
+		];
+
+		let mut block_template: [u8; 128] = [0; 128];
+		let mut rx = RxState::new();
+
+		rx.full_mem = true;
+		rx.jit_compiler = true;
+
+		rx.init_cache(&[0u8; 32])
+			.expect("Is not possible initialize the cache!");
+
+		rx.init_dataset(1)
+			.expect("Is not possible initialize the dataset");
+
+		let vm = rx.get_or_create_vm().unwrap();
+
+		let hash = calculate(&vm, &mut block_template, 0);
+
+		assert_eq!(hash, hashs[0]);
+
+		rx.init_cache(&[20u8; 32])
+			.expect("Is not possible initialize the cache!");
+
+		rx.init_dataset(1)
+			.expect("Is not possible initialize the dataset");
+
+		rx.update_vms();
+
+		let mut block_template: [u8; 128] = [0; 128];
+		let hash2 = calculate(&vm, &mut block_template, 0);
+
+		assert_eq!(hash2, hashs[1]);
 	}
 }
