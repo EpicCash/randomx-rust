@@ -60,12 +60,24 @@ fn main() {
 
 	fail_on_empty_directory("randomx");
 
-	exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
+	compile_cmake();
+	//exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
 
 	exec_if_newer("randomx", &format!("{}/ffi.rs", out_dir), || {
 		generate_bindings(&out_dir);
 	});
 
-	println!("cargo:rustc-link-search={}/build", out_dir);
-	println!("cargo:rustc-link-lib=randomx");
+	if cfg!(target_env = "msvc") {
+		let target = if cfg!(debug_assertions) {
+			"Debug"
+		} else {
+			"Release"
+		};
+
+		println!("cargo:rustc-link-search={}/build/{}", out_dir, target);
+		println!("cargo:rustc-link-lib=randomx");
+	} else {
+		println!("cargo:rustc-link-search={}/build", out_dir);
+		println!("cargo:rustc-link-lib=randomx");
+	}
 }
