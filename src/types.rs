@@ -73,7 +73,7 @@ pub struct RxState {
 	pub jit_compiler: bool,
 	cache: Option<RxCache>,
 	dataset: Option<RxDataset>,
-	vms: Vec<RxVM>,
+	vms: Vec<Arc<RxVM>>,
 	trash: Trash,
 }
 
@@ -171,7 +171,7 @@ impl RxState {
 
 		//let mut dataset_ptr =
 		//	unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
-		let dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
+		let mut dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
 
 		/*if dataset_ptr.is_null() {
 			dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
@@ -218,7 +218,7 @@ impl RxState {
 		Ok(())
 	}
 
-	pub fn create_vm<'a>(&'a mut self) -> Result<&'a RxVM, &str> {
+	pub fn create_vm(&mut self) -> Result<Arc<RxVM>, &str> {
 		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
 		let dataset = self
@@ -253,14 +253,14 @@ impl RxState {
 		}
 
 		if !vm.is_null() {
-			self.vms.push(RxVM { vm });
-			Ok(self.vms.last().unwrap())
+			self.vms.push(Arc::new(RxVM { vm }));
+			Ok(self.vms.last().unwrap().clone())
 		} else {
 			Err("unable to create RxVM")
 		}
 	}
 
-	pub fn get_or_create_vm<'a>(&'a mut self) -> Result<&'a RxVM, &str> {
+	pub fn get_or_create_vm(&mut self) -> Result<Arc<RxVM>, &str> {
 		if self.vms.len() == 0 {
 			self.create_vm()
 		} else {
@@ -269,15 +269,16 @@ impl RxState {
 	}
 
 	pub fn update_vms(&mut self) {
+		let cache = self.cache.as_ref().map_or(null_mut(), |x| x.cache);
+		let dataset = self.dataset.as_ref().map_or(null_mut(), |x| x.dataset);
+
 		for vm in &self.vms {
 			unsafe {
-				self.cache.as_ref().map(|x| randomx_vm_set_cache(vm.vm, x.cache));
-				self.dataset.as_ref().map(|x| randomx_vm_set_dataset(vm.vm, x.dataset));
+				randomx_vm_set_cache(vm.vm, cache);
+				randomx_vm_set_dataset(vm.vm, dataset);
 			}
 		}
 
-		if self.cache.is_some() && self.dataset.is_some() {
-			self.trash.empty();
-		}
+		self.trash.empty();
 	}
 }
