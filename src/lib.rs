@@ -50,7 +50,7 @@ pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 		let mut hash: [u8; 32] = [0; 32];
 
 		ffi::randomx_calculate_hash(
-			vm.vm,
+			vm.read().unwrap().vm,
 			data.as_ptr() as *const c_void,
 			data.len(),
 			hash.as_mut_ptr() as *mut c_void,

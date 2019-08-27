@@ -2,7 +2,7 @@ extern crate libc;
 
 use std::ptr::null_mut;
 use std::ptr::NonNull;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::thread;
 
 use ffi::*;
@@ -73,7 +73,7 @@ pub struct RxState {
 	pub jit_compiler: bool,
 	cache: Option<RxCache>,
 	dataset: Option<RxDataset>,
-	vms: Vec<Arc<RxVM>>,
+	vms: Vec<Arc<RwLock<RxVM>>>,
 	trash: Trash,
 }
 
@@ -140,12 +140,7 @@ impl RxState {
 		}
 
 		let flags = self.get_flags();
-		let mut cache_ptr =
-			unsafe { randomx_alloc_cache(flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
-
-		if cache_ptr.is_null() {
-			cache_ptr = unsafe { randomx_alloc_cache(flags) };
-		}
+		let mut cache_ptr = unsafe { randomx_alloc_cache(flags) };
 
 		if cache_ptr.is_null() {
 			return Err("cache not allocated");
@@ -218,7 +213,7 @@ impl RxState {
 		Ok(())
 	}
 
-	pub fn create_vm(&mut self) -> Result<Arc<RxVM>, &str> {
+	pub fn create_vm(&mut self) -> Result<Arc<RwLock<RxVM>>, &str> {
 		let cache = self.cache.as_ref().ok_or("cache is not initialized")?;
 
 		let dataset = self
@@ -236,15 +231,11 @@ impl RxState {
 
 		let mut vm = unsafe {
 			randomx_create_vm(
-				flags | randomx_flags_RANDOMX_FLAG_LARGE_PAGES,
+				flags,
 				cache.cache,
 				dataset,
 			)
 		};
-
-		if vm.is_null() {
-			vm = unsafe { randomx_create_vm(flags, cache.cache, dataset) };
-		}
 
 		if vm.is_null() {
 			vm = unsafe {
@@ -253,14 +244,14 @@ impl RxState {
 		}
 
 		if !vm.is_null() {
-			self.vms.push(Arc::new(RxVM { vm }));
+			self.vms.push(Arc::new(RwLock::new(RxVM { vm })));
 			Ok(self.vms.last().unwrap().clone())
 		} else {
 			Err("unable to create RxVM")
 		}
 	}
 
-	pub fn get_or_create_vm(&mut self) -> Result<Arc<RxVM>, &str> {
+	pub fn get_or_create_vm(&mut self) -> Result<Arc<RwLock<RxVM>>, &str> {
 		if self.vms.len() == 0 {
 			self.create_vm()
 		} else {
@@ -269,16 +260,16 @@ impl RxState {
 	}
 
 	pub fn update_vms(&mut self) {
-		let cache = self.cache.as_ref().map_or(null_mut(), |x| x.cache);
-		let dataset = self.dataset.as_ref().map_or(null_mut(), |x| x.dataset);
-
 		for vm in &self.vms {
+			let mut vm_lock = vm.write().unwrap();
 			unsafe {
-				randomx_vm_set_cache(vm.vm, cache);
-				randomx_vm_set_dataset(vm.vm, dataset);
+				self.cache.as_ref().map(|x| randomx_vm_set_cache(vm_lock.vm, x.cache));
+				self.dataset.as_ref().map(|x| randomx_vm_set_dataset(vm_lock.vm, x.dataset));
 			}
 		}
 
-		self.trash.empty();
+		if self.cache.is_some() {
+			self.trash.empty();
+		}
 	}
 }
