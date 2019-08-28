@@ -67,6 +67,17 @@ fn main() {
 		generate_bindings(&out_dir);
 	});
 
-	println!("cargo:rustc-link-search={}/build", out_dir);
-	println!("cargo:rustc-link-lib=randomx");
+	if cfg!(target_env = "msvc") {
+		let target = if cfg!(debug_assertions) {
+			"Debug"
+		} else {
+			"Release"
+		};
+
+		println!("cargo:rustc-link-search={}/build/{}", out_dir, target);
+		println!("cargo:rustc-link-lib=randomx");
+	} else {
+		println!("cargo:rustc-link-search={}/build", out_dir);
+		println!("cargo:rustc-link-lib=randomx");
+	}
 }
