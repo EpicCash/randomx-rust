@@ -84,6 +84,7 @@ mod test {
 	}
 
 	#[test]
+	#[ignore]
 	fn test_swap_dataset() {
 		let hashs = vec![
 			U256::from_dec_str(

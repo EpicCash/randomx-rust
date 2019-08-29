@@ -229,13 +229,7 @@ impl RxState {
 				0
 			};
 
-		let mut vm = unsafe {
-			randomx_create_vm(
-				flags,
-				cache.cache,
-				dataset,
-			)
-		};
+		let mut vm = unsafe { randomx_create_vm(flags, cache.cache, dataset) };
 
 		if vm.is_null() {
 			vm = unsafe {
@@ -263,8 +257,12 @@ impl RxState {
 		for vm in &self.vms {
 			let mut vm_lock = vm.write().unwrap();
 			unsafe {
-				self.cache.as_ref().map(|x| randomx_vm_set_cache(vm_lock.vm, x.cache));
-				self.dataset.as_ref().map(|x| randomx_vm_set_dataset(vm_lock.vm, x.dataset));
+				self.cache
+					.as_ref()
+					.map(|x| randomx_vm_set_cache(vm_lock.vm, x.cache));
+				self.dataset
+					.as_ref()
+					.map(|x| randomx_vm_set_dataset(vm_lock.vm, x.dataset));
 			}
 		}
 
