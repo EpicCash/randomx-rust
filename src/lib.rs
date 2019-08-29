@@ -108,7 +108,9 @@ mod test {
 		rx.init_dataset(1)
 			.expect("Is not possible initialize the dataset");
 
-		let vm = rx.get_or_create_vm().unwrap();
+		let vm_lock = rx.get_or_create_vm().unwrap();
+
+		let vm = vm_lock.read().unwrap();
 
 		let hash = calculate(&vm, &mut block_template, 0);
 
