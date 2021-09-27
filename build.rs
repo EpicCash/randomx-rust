@@ -34,7 +34,7 @@ fn generate_bindings(out_dir: &str) {
 }
 
 fn compile_cmake() {
-	cmake::Config::new("randomx").build_target("").build();
+	cmake::Config::new("randomx").no_build_target(true).build();
 }
 
 fn exec_if_newer<F: Fn()>(inpath: &str, outpath: &str, build: F) {
