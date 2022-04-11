@@ -22,12 +22,9 @@ pub fn fail_on_empty_directory(name: &str) {
 fn generate_bindings(out_dir: &str) {
 	let bindings = bindgen::Builder::default()
 		.header("randomx/src/randomx.h")
-		.blacklist_type("max_align_t")
-		.blacklist_type("_bindgen_ty_1")
 		.generate()
 		.expect("Unable to generate bindings");
 
-	//let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
 	bindings
 		.write_to_file(format!("{}/ffi.rs", out_dir))
 		.expect("Couldn't write bindings!");
@@ -61,7 +58,7 @@ fn main() {
 	fail_on_empty_directory("randomx");
 
 	compile_cmake();
-	//exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
+	exec_if_newer("randomx", &format!("{}/build", out_dir), compile_cmake);
 
 	exec_if_newer("randomx", &format!("{}/ffi.rs", out_dir), || {
 		generate_bindings(&out_dir);
@@ -79,5 +76,21 @@ fn main() {
 	} else {
 		println!("cargo:rustc-link-search={}/build", out_dir);
 		println!("cargo:rustc-link-lib=randomx");
+
+        let target  = env::var("TARGET").unwrap();
+        if target.contains("apple")
+        {
+            println!("cargo:rustc-link-lib=dylib=c++");
+        }
+        else if target.contains("linux")
+        {
+            println!("cargo:rustc-link-lib=dylib=stdc++");
+        }
+        else
+        {
+            unimplemented!();
+        }
+
+
 	}
 }
