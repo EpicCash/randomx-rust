@@ -177,10 +177,10 @@ impl RxState {
 		}
 
 		let mut threads = Vec::new();
-		let mut start: u64 = 0;
-		let count: u64 = unsafe { randomx_dataset_item_count() } as u64;
-		let perth: u64 = count / threads_count as u64;
-		let remainder: u64 = count % threads_count as u64;
+		let mut start: u32 = 0;
+		let count: u32 = unsafe { randomx_dataset_item_count() } as u32;
+		let perth: u32 = count / threads_count as u32;
+		let remainder: u32 = count % threads_count as u32;
 
 		for i in 0..threads_count {
 			let cache = Wrapper(NonNull::new(cache.cache).unwrap());
