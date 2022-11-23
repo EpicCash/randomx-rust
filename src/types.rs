@@ -140,7 +140,7 @@ impl RxState {
 		}
 
 		let flags = self.get_flags();
-		let mut cache_ptr = unsafe { randomx_alloc_cache(flags) };
+		let cache_ptr = unsafe { randomx_alloc_cache(flags) };
 
 		if cache_ptr.is_null() {
 			return Err("cache not allocated");
@@ -166,7 +166,7 @@ impl RxState {
 
 		//let mut dataset_ptr =
 		//	unsafe { randomx_alloc_dataset(randomx_flags_RANDOMX_FLAG_LARGE_PAGES) };
-		let mut dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
+		let dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
 
 		/*if dataset_ptr.is_null() {
 			dataset_ptr = unsafe { randomx_alloc_dataset(self.get_flags()) };
@@ -255,7 +255,7 @@ impl RxState {
 
 	pub fn update_vms(&mut self) {
 		for vm in &self.vms {
-			let mut vm_lock = vm.write().unwrap();
+			let vm_lock = vm.write().unwrap();
 			unsafe {
 				self.cache
 					.as_ref()
