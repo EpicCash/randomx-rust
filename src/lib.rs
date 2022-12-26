@@ -29,7 +29,7 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> U256 {
 		randomx_calculate_hash(
 			vm.vm,
 			input.as_ptr() as *const c_void,
-			input_size,
+			input_size as u64,
 			result.as_mut_ptr() as *mut c_void,
 		);
 	}
@@ -52,7 +52,7 @@ pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 		ffi::randomx_calculate_hash(
 			vm.read().unwrap().vm,
 			data.as_ptr() as *const c_void,
-			data.len(),
+			data.len() as u64,
 			hash.as_mut_ptr() as *mut c_void,
 		);
 
@@ -64,9 +64,8 @@ pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> U256 {
 
 #[cfg(test)]
 mod test {
-	use super::utils::*;
+
 	use super::*;
-	use crate::utils::*;
 
 	#[test]
 	fn test_verify() {

@@ -147,7 +147,7 @@ impl RxState {
 		}
 
 		unsafe {
-			randomx_init_cache(cache_ptr, seed.as_ptr() as *const c_void, seed.len());
+			randomx_init_cache(cache_ptr, seed.as_ptr() as *const c_void, seed.len() as u64);
 		}
 
 		self.trash.cache = self.cache.take();

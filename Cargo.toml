@@ -10,6 +10,6 @@ bigint = "4.4.1"
 byteorder = "^0.5"
 
 [build-dependencies]
-bindgen = "0.37.0"
+bindgen = "0.56.0"
 cmake = "0.1.40"
 filetime = "0.2"
