@@ -3,13 +3,14 @@ name = "randomx"
 version = "0.1.1"
 authors = ["Brick Abode <epiccash@brickabode.com>"]
 build = "build.rs"
+edition = "2021"
 
 [dependencies]
-libc = "0.2.51"
-bigint = "4.4.1"
-byteorder = "^0.5"
+libc = "0.2.171"
+num-bigint = "0.4"
+byteorder = "1.5.0"
 
 [build-dependencies]
-bindgen = "0.37.0"
-cmake = "0.1.40"
-filetime = "0.2"
+bindgen = "0.71.1"
+cmake = "0.1.54"
+filetime = "0.2.25"
