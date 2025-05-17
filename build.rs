@@ -31,7 +31,17 @@ fn generate_bindings(out_dir: &str) {
 }
 
 fn compile_cmake() {
-	cmake::Config::new("randomx").no_build_target(true).build();
+	let target = std::env::var("TARGET").unwrap();
+	let mut config = cmake::Config::new("randomx");
+	config.no_build_target(true);
+
+	// Only for Mac Silicon (Apple ARM)
+	if target.contains("apple") && target.contains("aarch64") {
+		config.define("ARCH", "native");
+		config.define("CMAKE_OSX_ARCHITECTURES", "arm64");
+	}
+
+	config.build();
 }
 
 fn exec_if_newer<F: Fn()>(inpath: &str, outpath: &str, build: F) {
