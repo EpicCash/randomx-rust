@@ -84,7 +84,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_swap_dataset() {
         let hashs = vec![
             BigUint::from_str(
