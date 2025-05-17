@@ -1,3 +1,4 @@
 [submodule "randomx"]
 	path = randomx
 	url = https://github.com/EpicCash/randomx.git
+	branch = update_dependencies
