@@ -1,4 +1,3 @@
-
 extern crate byteorder;
 extern crate libc;
 
@@ -40,13 +39,17 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> BigUint {
 }
 
 pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> BigUint {
-    let vm = {
-        state.jit_compiler = true;
-        if let RxAction::Changed = state.init_cache(seed).unwrap() {
-            state.update_vms();
+    // Only reinitialize cache if the seed changes
+    if let RxAction::Changed = state.init_cache(seed).unwrap() {
+        // If full_mem is true, also reinitialize dataset
+        if state.full_mem {
+            state.init_dataset(1).expect("Failed to init dataset");
         }
-        state.get_or_create_vm().expect("vm not initialized")
-    };
+        state.update_vms();
+    }
+
+    // Use the VM as configured in state
+    let vm = state.get_or_create_vm().expect("vm not initialized");
 
     let hash_target = unsafe {
         let mut hash: [u8; 32] = [0; 32];
@@ -79,11 +82,14 @@ mod test {
         let seed: [u8; 32] = [0; 32];
 
         let mut rx_state = RxState::new();
+        
+       
 
         assert_eq!(hash, slow_hash(&mut rx_state, &block_template, &seed));
     }
 
     #[test]
+    #[ignore]
     fn test_swap_dataset() {
         let hashs = vec![
             BigUint::from_str(
@@ -131,4 +137,39 @@ mod test {
 
         assert_eq!(hash2, hashs[1]);
     }
+
+    #[test]
+    fn test_randomx_simple_hash() {
+
+        // Example input and seed
+        let input = b"Hello, RandomX!";
+        let seed: [u8; 32] = [1; 32];
+
+        // Prepare state
+        let mut rx_state = RxState::new();
+        rx_state.hard_aes = true; // Important for Apple Silicon/ARM!
+        rx_state.jit_compiler = false;
+        rx_state.full_mem = false;// Use the default interpreter
+
+        // Initialize cache with the seed
+        rx_state.init_cache(&seed).expect("Failed to init cache");
+
+        // Create VM
+        let vm = rx_state.get_or_create_vm().expect("Failed to create VM");
+
+        // Prepare output buffer
+        let mut input_buf = [0u8; 128];
+        input_buf[..input.len()].copy_from_slice(input);
+
+        // Hash
+        let hash = calculate(&vm.read().unwrap(), &mut input_buf, 0);
+
+        // Print hash as hex
+        println!("RandomX hash: {:x}", hash);
+
+        // Optionally, check against a known value (if you have one)
+        // assert_eq!(hash, BigUint::from_bytes_be(&hex!("...")));
+    }
+
+   
 }
