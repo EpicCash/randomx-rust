@@ -1,6 +1,6 @@
 [package]
 name = "randomx"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Brick Abode <epiccash@brickabode.com>"]
 build = "build.rs"
 edition = "2021"
