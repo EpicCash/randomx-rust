@@ -15,7 +15,7 @@ use ffi::randomx_calculate_hash;
 
 pub use types::{RxAction, RxState, RxVM};
 
-pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> BigUint {
+pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> [u8; 32] {
     let mut result: [u8; 32] = [0; 32];
     let input_size = input.len();
 
@@ -35,10 +35,10 @@ pub fn calculate(vm: &RxVM, input: &mut [u8], nonce: u64) -> BigUint {
         );
     }
 
-    BigUint::from_bytes_be(&result)
+    result
 }
 
-pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> BigUint {
+pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> [u8; 32] {
     // Only reinitialize cache if the seed changes
     if let RxAction::Changed = state.init_cache(seed).unwrap() {
         // If full_mem is true, also reinitialize dataset
@@ -61,7 +61,7 @@ pub fn slow_hash(state: &mut RxState, data: &[u8], seed: &[u8; 32]) -> BigUint {
             hash.as_mut_ptr() as *mut c_void,
         );
 
-        BigUint::from_bytes_be(&hash)
+        hash
     };
 
     hash_target
