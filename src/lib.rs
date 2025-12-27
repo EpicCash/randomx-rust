@@ -8,9 +8,6 @@ pub mod utils;
 use byteorder::{BigEndian, ByteOrder};
 use libc::c_void;
 
-use num_bigint::BigUint;
-
-
 use ffi::randomx_calculate_hash;
 
 pub use types::{RxAction, RxState, RxVM};
