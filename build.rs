@@ -20,8 +20,20 @@ pub fn fail_on_empty_directory(name: &str) {
 }
 
 fn generate_bindings(out_dir: &str) {
-	let bindings = bindgen::Builder::default()
-		.header("randomx/src/randomx.h")
+	let target = std::env::var("TARGET").unwrap();
+
+	// For iOS simulator, use a modified target for bindgen.
+	let mut builder = bindgen::Builder::default()
+		.header("randomx/src/randomx.h");
+
+	// iOS simulator targets need special handling, use the device target for bindgen.
+	if target.contains("ios-sim") {
+		println!("cargo:warning=Using iOS device target for bindgen on simulator");
+		// Override the target for bindgen to use the device target.
+		builder = builder.clang_arg("--target=arm64-apple-ios");
+	}
+
+	let bindings = builder
 		.generate()
 		.expect("Unable to generate bindings");
 
@@ -39,6 +51,10 @@ fn compile_cmake() {
 	if target.contains("apple") && target.contains("aarch64") {
 		config.define("ARCH", "native");
 		config.define("CMAKE_OSX_ARCHITECTURES", "arm64");
+		// For iOS, set the CMAKE_SYSTEM_NAME so CMakeLists.txt can skip test executables.
+		if target.contains("ios") {
+			config.define("CMAKE_SYSTEM_NAME", "iOS");
+		}
 	}
 
 	config.build();
