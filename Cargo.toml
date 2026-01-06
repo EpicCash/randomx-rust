@@ -12,6 +12,6 @@ byteorder = "1.5.0"
 hex-literal = "1.0.0"
 
 [build-dependencies]
-bindgen = "^0.37.0"
+bindgen = "^0.71.1"
 cmake = "0.1.54"
 filetime = "0.2.25"
