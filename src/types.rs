@@ -191,22 +191,13 @@ impl RxState {
                 let mut d = dataset.0.lock().unwrap();
                 let mut c = cache.0.lock().unwrap();
 
-                #[cfg(target_os = "windows")]
-                {
-                    let start_native = u32::try_from(start).expect("start does not fit in u32");
-                    let count_native = u32::try_from(count).expect("count does not fit in u32");
-                    unsafe {
-                        randomx_init_dataset(d.as_mut(), c.as_mut(), start_native.into(), count_native.into());
-                    }
-                }
-
-                #[cfg(not(target_os = "windows"))]
-                {
-                    let start_native = u64::try_from(start).expect("start does not fit in u64");
-                    let count_native = u64::try_from(count).expect("count does not fit in u64");
-                    unsafe {
-                        randomx_init_dataset(d.as_mut(), c.as_mut(), start_native, count_native);
-                    }
+                // Use libc::c_ulong for cross-platform compatibility:
+                // 32-bit on Windows and 32-bit Linux/Android (armv7)
+                // 64-bit on 64-bit Linux/Android/macOS (aarch64, x86_64)
+                let start_native = start as libc::c_ulong;
+                let count_native = count as libc::c_ulong;
+                unsafe {
+                    randomx_init_dataset(d.as_mut(), c.as_mut(), start_native, count_native);
                 }
             }));
             start += count;
